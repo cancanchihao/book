@@ -1,8 +1,0 @@
-Name: rpc.rpc
-ListenOn: 127.0.0.1:8010
-Etcd:
-  Hosts:
-  - 127.0.0.1:2379
-  Key: user.rpc
-Mysql:
-  DataSource: root:20040326hyc@tcp(127.0.0.1:3306)/book?charset=utf8mb4&parseTime=true&loc=Asia%2FShanghai
