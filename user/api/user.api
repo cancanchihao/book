@@ -1,8 +1,8 @@
 info(
 	title: "user api"
 	desc: "用户系统"
-	author: "anqiansong"
-	email: "anqiansong@xiaoheiban.cn"
+	author: "cancan"
+	email: "cancanchihao@gmail.com"
 )
 
 type RegisterReq {

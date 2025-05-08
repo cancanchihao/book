@@ -6,7 +6,7 @@ import (
 	"book/user/model"
 	"context"
 
-	"github.com/tal-tech/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/logx"
 )
 
 type RegisterLogic struct {
@@ -25,17 +25,17 @@ func NewRegisterLogic(ctx context.Context, svcCtx *svc.ServiceContext) RegisterL
 
 func (l *RegisterLogic) Register(req types.RegisterReq) error {
 	// 为了简单，这里只做一下简单的逻辑校验
-	_, err := l.svcCtx.UserModel.FindOneByName(req.Username)
+	_, err := l.svcCtx.UserModel.FindOneByName(l.ctx, req.Username)
 	if err == nil {
 		return errorDuplicateUsername
 	}
 
-	_, err = l.svcCtx.UserModel.FindOneByMobile(req.Mobile)
+	_, err = l.svcCtx.UserModel.FindOneByMobile(l.ctx, req.Mobile)
 	if err == nil {
 		return errorDuplicateMobile
 	}
 
-	_, err = l.svcCtx.UserModel.Insert(model.User{
+	_, err = l.svcCtx.UserModel.Insert(l.ctx, &model.User{
 		Name:     req.Username,
 		Password: req.Password,
 		Mobile:   req.Mobile,

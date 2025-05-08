@@ -3,12 +3,13 @@ package logic
 import (
 	"book/user/model"
 	"context"
+	"errors"
 	"strconv"
 
 	"book/user/api/internal/svc"
 	"book/user/api/internal/types"
 
-	"github.com/tal-tech/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/logx"
 )
 
 type UserInfoLogic struct {
@@ -31,9 +32,9 @@ func (l *UserInfoLogic) UserInfo(userId string) (*types.UserReply, error) {
 		return nil, err
 	}
 
-	userInfo, err := l.svcCtx.UserModel.FindOne(userInt)
-	switch err {
-	case nil:
+	userInfo, err := l.svcCtx.UserModel.FindOne(l.ctx, userInt)
+	switch {
+	case err == nil:
 		return &types.UserReply{
 			Id:       userInfo.Id,
 			Username: userInfo.Name,
@@ -41,7 +42,7 @@ func (l *UserInfoLogic) UserInfo(userId string) (*types.UserReply, error) {
 			Nickname: userInfo.Nickname,
 			Gender:   userInfo.Gender,
 		}, nil
-	case model.ErrNotFound:
+	case errors.Is(err, model.ErrNotFound):
 		return nil, errorUserNotFound
 	default:
 		return nil, err

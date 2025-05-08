@@ -4,10 +4,11 @@ import (
 	"book/user/model"
 	"book/user/rpc/user"
 	"context"
+	"errors"
 
 	"book/user/rpc/internal/svc"
 
-	"github.com/tal-tech/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/logx"
 )
 
 type IsUserExistLogic struct {
@@ -24,13 +25,13 @@ func NewIsUserExistLogic(ctx context.Context, svcCtx *svc.ServiceContext) *IsUse
 	}
 }
 
-// 判断用户是否存在
+// IsUserExist 判断用户是否存在
 func (l *IsUserExistLogic) IsUserExist(in *user.UserExistReq) (*user.UserExistReply, error) {
-	_, err := l.svcCtx.UserModel.FindOne(in.Id)
-	switch err {
-	case nil:
+	_, err := l.svcCtx.UserModel.FindOne(l.ctx, in.Id)
+	switch {
+	case err == nil:
 		return &user.UserExistReply{Exists: true}, nil
-	case model.ErrNotFound:
+	case errors.Is(err, model.ErrNotFound):
 		return &user.UserExistReply{}, nil
 	default:
 		return nil, err

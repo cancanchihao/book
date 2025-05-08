@@ -7,7 +7,7 @@ import (
 	"book/borrow/api/internal/svc"
 	"book/borrow/api/internal/types"
 
-	"github.com/tal-tech/go-zero/rest/httpx"
+	"github.com/zeromicro/go-zero/rest/httpx"
 )
 
 func borrowHandler(ctx *svc.ServiceContext) http.HandlerFunc {

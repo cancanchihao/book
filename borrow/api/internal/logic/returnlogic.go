@@ -7,11 +7,12 @@ import (
 	"book/library/rpc/library"
 	"book/shared"
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
 
-	"github.com/tal-tech/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/logx"
 )
 
 type ReturnLogic struct {
@@ -42,17 +43,17 @@ func (l *ReturnLogic) Return(userId string, req types.ReturnReq) error {
 		return err
 	}
 
-	info, err := l.svcCtx.BorrowSystemModel.FindOneByUserAndBookNo(userInt, book.No)
-	switch err {
-	case nil:
+	info, err := l.svcCtx.BorrowSystemModel.FindOneByUserAndBookNo(l.ctx, userInt, book.No)
+	switch {
+	case err == nil:
 		if info.Status == model.Return {
 			return errBookReturn
 		}
 		info.ReturnDate = time.Now().Unix()
 		info.Status = model.Return
-		err = l.svcCtx.BorrowSystemModel.Update(*info)
+		err = l.svcCtx.BorrowSystemModel.Update(l.ctx, info)
 		return err
-	case model.ErrNotFound:
+	case errors.Is(err, model.ErrNotFound):
 		return errUserReturn
 	default:
 		return err

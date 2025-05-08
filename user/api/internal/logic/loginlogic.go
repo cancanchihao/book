@@ -5,10 +5,11 @@ import (
 	"book/user/api/internal/types"
 	"book/user/model"
 	"context"
+	"errors"
 	"time"
 
-	"github.com/dgrijalva/jwt-go"
-	"github.com/tal-tech/go-zero/core/logx"
+	"github.com/golang-jwt/jwt/v4"
+	"github.com/zeromicro/go-zero/core/logx"
 )
 
 type LoginLogic struct {
@@ -27,9 +28,9 @@ func NewLoginLogic(ctx context.Context, svcCtx *svc.ServiceContext) LoginLogic {
 
 func (l *LoginLogic) Login(req types.LoginReq) (*types.UserReply, error) {
 	// 忽略逻辑校验
-	userInfo, err := l.svcCtx.UserModel.FindOneByName(req.Username)
-	switch err {
-	case nil:
+	userInfo, err := l.svcCtx.UserModel.FindOneByName(l.ctx, req.Username)
+	switch {
+	case err == nil:
 		if userInfo.Password != req.Password {
 			return nil, errorIncorrectPassword
 		}
@@ -52,7 +53,7 @@ func (l *LoginLogic) Login(req types.LoginReq) (*types.UserReply, error) {
 				RefreshAfter: now + accessExpire/2,
 			},
 		}, nil
-	case model.ErrNotFound:
+	case errors.Is(err, model.ErrNotFound):
 		return nil, errorUsernameUnRegister
 	default:
 		return nil, err

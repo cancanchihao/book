@@ -1,8 +1,8 @@
 info(
     title: "图书借阅系统api"
     desc: "图书借阅系统api"
-    author: "keson"
-    email: "keson@xiaoheiban.cn"
+    author: "cancan"
+    email: "cancanchihao@gmail.com"
     version: "v1.0"
 )
 

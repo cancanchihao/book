@@ -8,11 +8,12 @@ import (
 	"book/shared"
 	"book/user/rpc/user"
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
 
-	"github.com/tal-tech/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/logx"
 )
 
 type BorrowLogic struct {
@@ -61,12 +62,12 @@ func (l *BorrowLogic) Borrow(userId string, req types.BorrowReq) error {
 		return err
 	}
 
-	_, err = l.svcCtx.BorrowSystemModel.FindOneByBookNo(book.No, model.Borrowing)
-	switch err {
-	case nil:
+	_, err = l.svcCtx.BorrowSystemModel.FindOneByBookNo(l.ctx, book.No, model.Borrowing)
+	switch {
+	case err == nil:
 		return errBookBorrowed
-	case model.ErrNotFound:
-		_, err = l.svcCtx.BorrowSystemModel.Insert(model.BorrowSystem{
+	case errors.Is(err, model.ErrNotFound):
+		_, err = l.svcCtx.BorrowSystemModel.Insert(l.ctx, &model.BorrowSystem{
 			BookNo:         book.No,
 			UserId:         userInt,
 			Status:         model.Borrowing,

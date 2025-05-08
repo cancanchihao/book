@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package library;
 
+option go_package = "./pb";
+
 message FindBookReq {
   // 书籍名称
   string name = 1;

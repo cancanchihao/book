@@ -4,11 +4,12 @@ import (
 	"book/library/model"
 	"book/shared"
 	"context"
+	"errors"
 
 	"book/library/rpc/internal/svc"
 	"book/library/rpc/library"
 
-	"github.com/tal-tech/go-zero/core/logx"
+	"github.com/zeromicro/go-zero/core/logx"
 )
 
 const (
@@ -31,16 +32,16 @@ func NewFindBookByNameLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Fi
 
 // 通过书籍名称查找书籍
 func (l *FindBookByNameLogic) FindBookByName(in *library.FindBookReq) (*library.FindBookReply, error) {
-	book, err := l.svcCtx.LibraryModel.FindOneByName(in.Name)
-	switch err {
-	case nil:
+	book, err := l.svcCtx.LibraryModel.FindOneByName(l.ctx, in.Name)
+	switch {
+	case err == nil:
 		return &library.FindBookReply{
 			No:          book.Id,
 			Name:        book.Name,
 			Author:      book.Author,
 			PublishFate: book.PublishDate.Format(timeFormat),
 		}, nil
-	case model.ErrNotFound:
+	case errors.Is(err, model.ErrNotFound):
 		return nil, shared.NewGRPCNotFound()
 	default:
 		return nil, shared.NewGRPCErrorFromError(err)
