@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/zeromicro/go-zero/core/stores/builder"
+	"github.com/zeromicro/go-zero/core/stores/cache"
+	"github.com/zeromicro/go-zero/core/stores/sqlc"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 	"github.com/zeromicro/go-zero/core/stringx"
 )
@@ -21,25 +23,28 @@ var (
 	borrowSystemRows                = strings.Join(borrowSystemFieldNames, ",")
 	borrowSystemRowsExpectAutoSet   = strings.Join(stringx.Remove(borrowSystemFieldNames, "`id`", "`create_at`", "`create_time`", "`created_at`", "`update_at`", "`update_time`", "`updated_at`"), ",")
 	borrowSystemRowsWithPlaceHolder = strings.Join(stringx.Remove(borrowSystemFieldNames, "`id`", "`create_at`", "`create_time`", "`created_at`", "`update_at`", "`update_time`", "`updated_at`"), "=?,") + "=?"
+
+	cacheBookBorrowSystemIdPrefix           = "cache:book:borrowSystem:id:"
+	cacheBookBorrowSystemUserIdBookNoPrefix = "cache:book:borrowSystem:userId:bookNo:"
 )
 
 type (
 	borrowSystemModel interface {
 		Insert(ctx context.Context, data *BorrowSystem) (sql.Result, error)
 		FindOne(ctx context.Context, id int64) (*BorrowSystem, error)
-		FindOneByUserIdBookNo(ctx context.Context, userId int64, bookNo string) (*BorrowSystem, error)
+		FindOneByUserIdBookNo(ctx context.Context, userId int64, bookNo int64) (*BorrowSystem, error)
 		Update(ctx context.Context, data *BorrowSystem) error
 		Delete(ctx context.Context, id int64) error
 	}
 
 	defaultBorrowSystemModel struct {
-		conn  sqlx.SqlConn
+		sqlc.CachedConn
 		table string
 	}
 
 	BorrowSystem struct {
 		Id             int64     `db:"id"`
-		BookNo         string    `db:"book_no"`          // 书籍号
+		BookNo         int64     `db:"book_no"`          // 书籍号
 		UserId         int64     `db:"user_id"`          // 借书人
 		Status         int64     `db:"status"`           // 书籍状态，0-未归还，1-已归还
 		ReturnPlanDate time.Time `db:"return_plan_date"` // 预计还书时间
@@ -49,41 +54,59 @@ type (
 	}
 )
 
-func newBorrowSystemModel(conn sqlx.SqlConn) *defaultBorrowSystemModel {
+func newBorrowSystemModel(conn sqlx.SqlConn, c cache.CacheConf, opts ...cache.Option) *defaultBorrowSystemModel {
 	return &defaultBorrowSystemModel{
-		conn:  conn,
-		table: "`borrow_system`",
+		CachedConn: sqlc.NewConn(conn, c, opts...),
+		table:      "`borrow_system`",
 	}
 }
 
 func (m *defaultBorrowSystemModel) Delete(ctx context.Context, id int64) error {
-	query := fmt.Sprintf("delete from %s where `id` = ?", m.table)
-	_, err := m.conn.ExecCtx(ctx, query, id)
+	data, err := m.FindOne(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	bookBorrowSystemIdKey := fmt.Sprintf("%s%v", cacheBookBorrowSystemIdPrefix, id)
+	bookBorrowSystemUserIdBookNoKey := fmt.Sprintf("%s%v:%v", cacheBookBorrowSystemUserIdBookNoPrefix, data.UserId, data.BookNo)
+	_, err = m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
+		query := fmt.Sprintf("delete from %s where `id` = ?", m.table)
+		return conn.ExecCtx(ctx, query, id)
+	}, bookBorrowSystemIdKey, bookBorrowSystemUserIdBookNoKey)
 	return err
 }
 
 func (m *defaultBorrowSystemModel) FindOne(ctx context.Context, id int64) (*BorrowSystem, error) {
-	query := fmt.Sprintf("select %s from %s where `id` = ? limit 1", borrowSystemRows, m.table)
+	bookBorrowSystemIdKey := fmt.Sprintf("%s%v", cacheBookBorrowSystemIdPrefix, id)
 	var resp BorrowSystem
-	err := m.conn.QueryRowCtx(ctx, &resp, query, id)
+	err := m.QueryRowCtx(ctx, &resp, bookBorrowSystemIdKey, func(ctx context.Context, conn sqlx.SqlConn, v any) error {
+		query := fmt.Sprintf("select %s from %s where `id` = ? limit 1", borrowSystemRows, m.table)
+		return conn.QueryRowCtx(ctx, v, query, id)
+	})
 	switch err {
 	case nil:
 		return &resp, nil
-	case sqlx.ErrNotFound:
+	case sqlc.ErrNotFound:
 		return nil, ErrNotFound
 	default:
 		return nil, err
 	}
 }
 
-func (m *defaultBorrowSystemModel) FindOneByUserIdBookNo(ctx context.Context, userId int64, bookNo string) (*BorrowSystem, error) {
+func (m *defaultBorrowSystemModel) FindOneByUserIdBookNo(ctx context.Context, userId int64, bookNo int64) (*BorrowSystem, error) {
+	bookBorrowSystemUserIdBookNoKey := fmt.Sprintf("%s%v:%v", cacheBookBorrowSystemUserIdBookNoPrefix, userId, bookNo)
 	var resp BorrowSystem
-	query := fmt.Sprintf("select %s from %s where `user_id` = ? and `book_no` = ? limit 1", borrowSystemRows, m.table)
-	err := m.conn.QueryRowCtx(ctx, &resp, query, userId, bookNo)
+	err := m.QueryRowIndexCtx(ctx, &resp, bookBorrowSystemUserIdBookNoKey, m.formatPrimary, func(ctx context.Context, conn sqlx.SqlConn, v any) (i any, e error) {
+		query := fmt.Sprintf("select %s from %s where `user_id` = ? and `book_no` = ? limit 1", borrowSystemRows, m.table)
+		if err := conn.QueryRowCtx(ctx, &resp, query, userId, bookNo); err != nil {
+			return nil, err
+		}
+		return resp.Id, nil
+	}, m.queryPrimary)
 	switch err {
 	case nil:
 		return &resp, nil
-	case sqlx.ErrNotFound:
+	case sqlc.ErrNotFound:
 		return nil, ErrNotFound
 	default:
 		return nil, err
@@ -91,15 +114,37 @@ func (m *defaultBorrowSystemModel) FindOneByUserIdBookNo(ctx context.Context, us
 }
 
 func (m *defaultBorrowSystemModel) Insert(ctx context.Context, data *BorrowSystem) (sql.Result, error) {
-	query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?, ?, ?)", m.table, borrowSystemRowsExpectAutoSet)
-	ret, err := m.conn.ExecCtx(ctx, query, data.BookNo, data.UserId, data.Status, data.ReturnPlanDate, data.ReturnDate)
+	bookBorrowSystemIdKey := fmt.Sprintf("%s%v", cacheBookBorrowSystemIdPrefix, data.Id)
+	bookBorrowSystemUserIdBookNoKey := fmt.Sprintf("%s%v:%v", cacheBookBorrowSystemUserIdBookNoPrefix, data.UserId, data.BookNo)
+	ret, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
+		query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?, ?, ?)", m.table, borrowSystemRowsExpectAutoSet)
+		return conn.ExecCtx(ctx, query, data.BookNo, data.UserId, data.Status, data.ReturnPlanDate, data.ReturnDate)
+	}, bookBorrowSystemIdKey, bookBorrowSystemUserIdBookNoKey)
 	return ret, err
 }
 
 func (m *defaultBorrowSystemModel) Update(ctx context.Context, newData *BorrowSystem) error {
-	query := fmt.Sprintf("update %s set %s where `id` = ?", m.table, borrowSystemRowsWithPlaceHolder)
-	_, err := m.conn.ExecCtx(ctx, query, newData.BookNo, newData.UserId, newData.Status, newData.ReturnPlanDate, newData.ReturnDate, newData.Id)
+	data, err := m.FindOne(ctx, newData.Id)
+	if err != nil {
+		return err
+	}
+
+	bookBorrowSystemIdKey := fmt.Sprintf("%s%v", cacheBookBorrowSystemIdPrefix, data.Id)
+	bookBorrowSystemUserIdBookNoKey := fmt.Sprintf("%s%v:%v", cacheBookBorrowSystemUserIdBookNoPrefix, data.UserId, data.BookNo)
+	_, err = m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
+		query := fmt.Sprintf("update %s set %s where `id` = ?", m.table, borrowSystemRowsWithPlaceHolder)
+		return conn.ExecCtx(ctx, query, newData.BookNo, newData.UserId, newData.Status, newData.ReturnPlanDate, newData.ReturnDate, newData.Id)
+	}, bookBorrowSystemIdKey, bookBorrowSystemUserIdBookNoKey)
 	return err
+}
+
+func (m *defaultBorrowSystemModel) formatPrimary(primary any) string {
+	return fmt.Sprintf("%s%v", cacheBookBorrowSystemIdPrefix, primary)
+}
+
+func (m *defaultBorrowSystemModel) queryPrimary(ctx context.Context, conn sqlx.SqlConn, v, primary any) error {
+	query := fmt.Sprintf("select %s from %s where `id` = ? limit 1", borrowSystemRows, m.table)
+	return conn.QueryRowCtx(ctx, v, query, primary)
 }
 
 func (m *defaultBorrowSystemModel) tableName() string {

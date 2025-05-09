@@ -3,6 +3,10 @@ Host: 0.0.0.0
 Port: 8888
 Mysql:
   DataSource: root:20040326hyc@tcp(127.0.0.1:3306)/book?charset=utf8mb4&parseTime=true&loc=Asia%2FShanghai
+Cache:
+  - Host: 127.0.0.1:6379
+    Type: node
+    Pass: ""
 Auth:
   AccessSecret: ad879037-c7a4-4063-9236-6bfc35d54b7d
   AccessExpire: 86400

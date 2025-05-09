@@ -2,6 +2,7 @@ package model
 
 import (
 	"context"
+	"github.com/zeromicro/go-zero/core/stores/cache"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
@@ -18,10 +19,9 @@ type (
 	// and implement the added methods in customBorrowSystemModel.
 	BorrowSystemModel interface {
 		borrowSystemModel
-		withSession(session sqlx.Session) BorrowSystemModel
 
-		FindOneByUserAndBookNo(ctx context.Context, userId int64, bookNo string) (*BorrowSystem, error)
-		FindOneByBookNo(ctx context.Context, bookNo string, status int64) (*BorrowSystem, error)
+		FindOneByUserAndBookNo(ctx context.Context, userId int64, bookNo int64) (*BorrowSystem, error)
+		FindOneByBookNo(ctx context.Context, bookNo int64, status int64) (*BorrowSystem, error)
 	}
 
 	customBorrowSystemModel struct {
@@ -30,12 +30,8 @@ type (
 )
 
 // NewBorrowSystemModel returns a model for the database table.
-func NewBorrowSystemModel(conn sqlx.SqlConn) BorrowSystemModel {
+func NewBorrowSystemModel(conn sqlx.SqlConn, c cache.CacheConf, opts ...cache.Option) BorrowSystemModel {
 	return &customBorrowSystemModel{
-		defaultBorrowSystemModel: newBorrowSystemModel(conn),
+		defaultBorrowSystemModel: newBorrowSystemModel(conn, c, opts...),
 	}
-}
-
-func (m *customBorrowSystemModel) withSession(session sqlx.Session) BorrowSystemModel {
-	return NewBorrowSystemModel(sqlx.NewSqlConnFromSession(session))
 }

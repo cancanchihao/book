@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package user;
 
-option go_package = "./pb";
+option go_package = "./user";
 
 message UserExistReq {
   int64 id = 1;

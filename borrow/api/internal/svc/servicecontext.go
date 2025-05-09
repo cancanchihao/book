@@ -23,7 +23,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	lr := libraryclient.NewLibrary(zrpc.MustNewClient(c.LibraryRpc))
 	return &ServiceContext{
 		Config:            c,
-		BorrowSystemModel: model.NewBorrowSystemModel(conn),
+		BorrowSystemModel: model.NewBorrowSystemModel(conn, c.Cache),
 		UserRpc:           ur,
 		LibraryRpc:        lr,
 	}
