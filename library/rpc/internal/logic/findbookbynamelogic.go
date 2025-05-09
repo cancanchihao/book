@@ -30,16 +30,19 @@ func NewFindBookByNameLogic(ctx context.Context, svcCtx *svc.ServiceContext) *Fi
 	}
 }
 
-// 通过书籍名称查找书籍
 func (l *FindBookByNameLogic) FindBookByName(in *library.FindBookReq) (*library.FindBookReply, error) {
 	book, err := l.svcCtx.LibraryModel.FindOneByName(l.ctx, in.Name)
 	switch {
 	case err == nil:
+		var publishDate string
+		if book.PublishDate.Valid {
+			publishDate = book.PublishDate.Time.Format(timeFormat)
+		}
 		return &library.FindBookReply{
 			No:          book.Id,
 			Name:        book.Name,
 			Author:      book.Author,
-			PublishFate: book.PublishDate.Format(timeFormat),
+			PublishDate: publishDate,
 		}, nil
 	case errors.Is(err, model.ErrNotFound):
 		return nil, shared.NewGRPCNotFound()

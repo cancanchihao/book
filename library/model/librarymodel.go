@@ -1,6 +1,7 @@
 package model
 
 import (
+	"github.com/zeromicro/go-zero/core/stores/cache"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
@@ -11,7 +12,6 @@ type (
 	// and implement the added methods in customLibraryModel.
 	LibraryModel interface {
 		libraryModel
-		withSession(session sqlx.Session) LibraryModel
 	}
 
 	customLibraryModel struct {
@@ -20,12 +20,8 @@ type (
 )
 
 // NewLibraryModel returns a model for the database table.
-func NewLibraryModel(conn sqlx.SqlConn) LibraryModel {
+func NewLibraryModel(conn sqlx.SqlConn, c cache.CacheConf, opts ...cache.Option) LibraryModel {
 	return &customLibraryModel{
-		defaultLibraryModel: newLibraryModel(conn),
+		defaultLibraryModel: newLibraryModel(conn, c, opts...),
 	}
-}
-
-func (m *customLibraryModel) withSession(session sqlx.Session) LibraryModel {
-	return NewLibraryModel(sqlx.NewSqlConnFromSession(session))
 }

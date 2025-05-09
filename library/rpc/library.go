@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/zeromicro/go-zero/core/service"
+	"google.golang.org/grpc/reflection"
 
 	"book/library/rpc/internal/config"
 	"book/library/rpc/internal/server"
@@ -22,10 +24,13 @@ func main() {
 	var c config.Config
 	conf.MustLoad(*configFile, &c)
 	ctx := svc.NewServiceContext(c)
-	srv := server.NewLibraryServer(ctx)
 
 	s := zrpc.MustNewServer(c.RpcServerConf, func(grpcServer *grpc.Server) {
-		library.RegisterLibraryServer(grpcServer, srv)
+		library.RegisterLibraryServer(grpcServer, server.NewLibraryServer(ctx))
+
+		if c.Mode == service.DevMode || c.Mode == service.TestMode {
+			reflection.Register(grpcServer)
+		}
 	})
 	defer s.Stop()
 

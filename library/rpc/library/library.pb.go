@@ -68,10 +68,10 @@ func (x *FindBookReq) GetName() string {
 
 type FindBookReply struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	No            string                 `protobuf:"bytes,1,opt,name=no,proto3" json:"no,omitempty"`
+	No            int64                  `protobuf:"varint,1,opt,name=no,proto3" json:"no,omitempty"`
 	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
 	Author        string                 `protobuf:"bytes,3,opt,name=author,proto3" json:"author,omitempty"`
-	PublishFate   string                 `protobuf:"bytes,4,opt,name=publishFate,proto3" json:"publishFate,omitempty"`
+	PublishDate   string                 `protobuf:"bytes,4,opt,name=publishDate,proto3" json:"publishDate,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -106,11 +106,11 @@ func (*FindBookReply) Descriptor() ([]byte, []int) {
 	return file_library_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *FindBookReply) GetNo() string {
+func (x *FindBookReply) GetNo() int64 {
 	if x != nil {
 		return x.No
 	}
-	return ""
+	return 0
 }
 
 func (x *FindBookReply) GetName() string {
@@ -127,11 +127,115 @@ func (x *FindBookReply) GetAuthor() string {
 	return ""
 }
 
-func (x *FindBookReply) GetPublishFate() string {
+func (x *FindBookReply) GetPublishDate() string {
 	if x != nil {
-		return x.PublishFate
+		return x.PublishDate
 	}
 	return ""
+}
+
+type CreateBookReq struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Author        string                 `protobuf:"bytes,2,opt,name=author,proto3" json:"author,omitempty"`
+	PublishDate   string                 `protobuf:"bytes,3,opt,name=publishDate,proto3" json:"publishDate,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateBookReq) Reset() {
+	*x = CreateBookReq{}
+	mi := &file_library_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateBookReq) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateBookReq) ProtoMessage() {}
+
+func (x *CreateBookReq) ProtoReflect() protoreflect.Message {
+	mi := &file_library_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateBookReq.ProtoReflect.Descriptor instead.
+func (*CreateBookReq) Descriptor() ([]byte, []int) {
+	return file_library_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *CreateBookReq) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CreateBookReq) GetAuthor() string {
+	if x != nil {
+		return x.Author
+	}
+	return ""
+}
+
+func (x *CreateBookReq) GetPublishDate() string {
+	if x != nil {
+		return x.PublishDate
+	}
+	return ""
+}
+
+type CreateBookReply struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateBookReply) Reset() {
+	*x = CreateBookReply{}
+	mi := &file_library_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateBookReply) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateBookReply) ProtoMessage() {}
+
+func (x *CreateBookReply) ProtoReflect() protoreflect.Message {
+	mi := &file_library_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateBookReply.ProtoReflect.Descriptor instead.
+func (*CreateBookReply) Descriptor() ([]byte, []int) {
+	return file_library_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *CreateBookReply) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
 }
 
 var File_library_proto protoreflect.FileDescriptor
@@ -142,12 +246,20 @@ const file_library_proto_rawDesc = "" +
 	"\vFindBookReq\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\"m\n" +
 	"\rFindBookReply\x12\x0e\n" +
-	"\x02no\x18\x01 \x01(\tR\x02no\x12\x12\n" +
+	"\x02no\x18\x01 \x01(\x03R\x02no\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
 	"\x06author\x18\x03 \x01(\tR\x06author\x12 \n" +
-	"\vpublishFate\x18\x04 \x01(\tR\vpublishFate2I\n" +
+	"\vpublishDate\x18\x04 \x01(\tR\vpublishDate\"]\n" +
+	"\rCreateBookReq\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
+	"\x06author\x18\x02 \x01(\tR\x06author\x12 \n" +
+	"\vpublishDate\x18\x03 \x01(\tR\vpublishDate\"+\n" +
+	"\x0fCreateBookReply\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess2\x89\x01\n" +
 	"\alibrary\x12>\n" +
-	"\x0eFindBookByName\x12\x14.library.FindBookReq\x1a\x16.library.FindBookReplyB\x06Z\x04./pbb\x06proto3"
+	"\x0eFindBookByName\x12\x14.library.FindBookReq\x1a\x16.library.FindBookReply\x12>\n" +
+	"\n" +
+	"CreateBook\x12\x16.library.CreateBookReq\x1a\x18.library.CreateBookReplyB\vZ\t./libraryb\x06proto3"
 
 var (
 	file_library_proto_rawDescOnce sync.Once
@@ -161,16 +273,20 @@ func file_library_proto_rawDescGZIP() []byte {
 	return file_library_proto_rawDescData
 }
 
-var file_library_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_library_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
 var file_library_proto_goTypes = []any{
-	(*FindBookReq)(nil),   // 0: library.FindBookReq
-	(*FindBookReply)(nil), // 1: library.FindBookReply
+	(*FindBookReq)(nil),     // 0: library.FindBookReq
+	(*FindBookReply)(nil),   // 1: library.FindBookReply
+	(*CreateBookReq)(nil),   // 2: library.CreateBookReq
+	(*CreateBookReply)(nil), // 3: library.CreateBookReply
 }
 var file_library_proto_depIdxs = []int32{
 	0, // 0: library.library.FindBookByName:input_type -> library.FindBookReq
-	1, // 1: library.library.FindBookByName:output_type -> library.FindBookReply
-	1, // [1:2] is the sub-list for method output_type
-	0, // [0:1] is the sub-list for method input_type
+	2, // 1: library.library.CreateBook:input_type -> library.CreateBookReq
+	1, // 2: library.library.FindBookByName:output_type -> library.FindBookReply
+	3, // 3: library.library.CreateBook:output_type -> library.CreateBookReply
+	2, // [2:4] is the sub-list for method output_type
+	0, // [0:2] is the sub-list for method input_type
 	0, // [0:0] is the sub-list for extension type_name
 	0, // [0:0] is the sub-list for extension extendee
 	0, // [0:0] is the sub-list for field type_name
@@ -187,7 +303,7 @@ func file_library_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_library_proto_rawDesc), len(file_library_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   2,
+			NumMessages:   4,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

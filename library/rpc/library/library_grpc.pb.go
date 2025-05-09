@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	Library_FindBookByName_FullMethodName = "/library.library/FindBookByName"
+	Library_CreateBook_FullMethodName     = "/library.library/CreateBook"
 )
 
 // LibraryClient is the client API for Library service.
@@ -28,6 +29,7 @@ const (
 type LibraryClient interface {
 	// 通过书籍名称查找书籍
 	FindBookByName(ctx context.Context, in *FindBookReq, opts ...grpc.CallOption) (*FindBookReply, error)
+	CreateBook(ctx context.Context, in *CreateBookReq, opts ...grpc.CallOption) (*CreateBookReply, error)
 }
 
 type libraryClient struct {
@@ -48,12 +50,23 @@ func (c *libraryClient) FindBookByName(ctx context.Context, in *FindBookReq, opt
 	return out, nil
 }
 
+func (c *libraryClient) CreateBook(ctx context.Context, in *CreateBookReq, opts ...grpc.CallOption) (*CreateBookReply, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateBookReply)
+	err := c.cc.Invoke(ctx, Library_CreateBook_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // LibraryServer is the server API for Library service.
 // All implementations must embed UnimplementedLibraryServer
 // for forward compatibility.
 type LibraryServer interface {
 	// 通过书籍名称查找书籍
 	FindBookByName(context.Context, *FindBookReq) (*FindBookReply, error)
+	CreateBook(context.Context, *CreateBookReq) (*CreateBookReply, error)
 	mustEmbedUnimplementedLibraryServer()
 }
 
@@ -66,6 +79,9 @@ type UnimplementedLibraryServer struct{}
 
 func (UnimplementedLibraryServer) FindBookByName(context.Context, *FindBookReq) (*FindBookReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FindBookByName not implemented")
+}
+func (UnimplementedLibraryServer) CreateBook(context.Context, *CreateBookReq) (*CreateBookReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateBook not implemented")
 }
 func (UnimplementedLibraryServer) mustEmbedUnimplementedLibraryServer() {}
 func (UnimplementedLibraryServer) testEmbeddedByValue()                 {}
@@ -106,6 +122,24 @@ func _Library_FindBookByName_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Library_CreateBook_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateBookReq)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LibraryServer).CreateBook(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Library_CreateBook_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LibraryServer).CreateBook(ctx, req.(*CreateBookReq))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Library_ServiceDesc is the grpc.ServiceDesc for Library service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -116,6 +150,10 @@ var Library_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "FindBookByName",
 			Handler:    _Library_FindBookByName_Handler,
+		},
+		{
+			MethodName: "CreateBook",
+			Handler:    _Library_CreateBook_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

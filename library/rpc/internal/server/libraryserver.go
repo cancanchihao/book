@@ -24,3 +24,8 @@ func (s *LibraryServer) FindBookByName(ctx context.Context, in *library.FindBook
 	l := logic.NewFindBookByNameLogic(ctx, s.svcCtx)
 	return l.FindBookByName(in)
 }
+
+func (s *LibraryServer) CreateBook(ctx context.Context, in *library.CreateBookReq) (*library.CreateBookReply, error) {
+	l := logic.NewCreateBookLogic(ctx, s.svcCtx)
+	return l.CreateBook(in)
+}

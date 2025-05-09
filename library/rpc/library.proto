@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package library;
 
-option go_package = "./pb";
+option go_package = "./library";
 
 message FindBookReq {
   // 书籍名称
@@ -10,13 +10,24 @@ message FindBookReq {
 }
 
 message FindBookReply {
-  string no = 1;
+  int64  no = 1;
   string name = 2;
   string author = 3;
-  string publishFate = 4;
+  string publishDate = 4;
+}
+
+message CreateBookReq {
+  string name = 1;
+  string author = 2;
+  string publishDate = 3;
+}
+
+message CreateBookReply {
+  bool success = 1;
 }
 
 service library {
   // 通过书籍名称查找书籍
   rpc FindBookByName(FindBookReq) returns (FindBookReply);
+  rpc CreateBook(CreateBookReq) returns (CreateBookReply);
 }

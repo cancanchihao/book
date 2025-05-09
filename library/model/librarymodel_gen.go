@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/zeromicro/go-zero/core/stores/builder"
+	"github.com/zeromicro/go-zero/core/stores/cache"
+	"github.com/zeromicro/go-zero/core/stores/sqlc"
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 	"github.com/zeromicro/go-zero/core/stringx"
 )
@@ -19,55 +21,70 @@ import (
 var (
 	libraryFieldNames          = builder.RawFieldNames(&Library{})
 	libraryRows                = strings.Join(libraryFieldNames, ",")
-	libraryRowsExpectAutoSet   = strings.Join(stringx.Remove(libraryFieldNames, "`create_at`", "`create_time`", "`created_at`", "`update_at`", "`update_time`", "`updated_at`"), ",")
+	libraryRowsExpectAutoSet   = strings.Join(stringx.Remove(libraryFieldNames, "`id`", "`create_at`", "`create_time`", "`created_at`", "`update_at`", "`update_time`", "`updated_at`"), ",")
 	libraryRowsWithPlaceHolder = strings.Join(stringx.Remove(libraryFieldNames, "`id`", "`create_at`", "`create_time`", "`created_at`", "`update_at`", "`update_time`", "`updated_at`"), "=?,") + "=?"
+
+	cacheBookLibraryIdPrefix   = "cache:book:library:id:"
+	cacheBookLibraryNamePrefix = "cache:book:library:name:"
 )
 
 type (
 	libraryModel interface {
 		Insert(ctx context.Context, data *Library) (sql.Result, error)
-		FindOne(ctx context.Context, id string) (*Library, error)
+		FindOne(ctx context.Context, id int64) (*Library, error)
 		FindOneByName(ctx context.Context, name string) (*Library, error)
 		Update(ctx context.Context, data *Library) error
-		Delete(ctx context.Context, id string) error
+		Delete(ctx context.Context, id int64) error
 	}
 
 	defaultLibraryModel struct {
-		conn  sqlx.SqlConn
+		sqlc.CachedConn
 		table string
 	}
 
 	Library struct {
-		Id          string    `db:"id"`     // 书籍序列号
-		Name        string    `db:"name"`   // 书籍名称
-		Author      string    `db:"author"` // 书籍作者
-		PublishDate time.Time `db:"publish_date"`
-		CreateTime  time.Time `db:"create_time"`
-		UpdateTime  time.Time `db:"update_time"`
+		Id          int64        `db:"id"`     // 书籍序列号
+		Name        string       `db:"name"`   // 书籍名称
+		Author      string       `db:"author"` // 书籍作者
+		PublishDate sql.NullTime `db:"publish_date"`
+		CreateTime  time.Time    `db:"create_time"`
+		UpdateTime  time.Time    `db:"update_time"`
 	}
 )
 
-func newLibraryModel(conn sqlx.SqlConn) *defaultLibraryModel {
+func newLibraryModel(conn sqlx.SqlConn, c cache.CacheConf, opts ...cache.Option) *defaultLibraryModel {
 	return &defaultLibraryModel{
-		conn:  conn,
-		table: "`library`",
+		CachedConn: sqlc.NewConn(conn, c, opts...),
+		table:      "`library`",
 	}
 }
 
-func (m *defaultLibraryModel) Delete(ctx context.Context, id string) error {
-	query := fmt.Sprintf("delete from %s where `id` = ?", m.table)
-	_, err := m.conn.ExecCtx(ctx, query, id)
+func (m *defaultLibraryModel) Delete(ctx context.Context, id int64) error {
+	data, err := m.FindOne(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	bookLibraryIdKey := fmt.Sprintf("%s%v", cacheBookLibraryIdPrefix, id)
+	bookLibraryNameKey := fmt.Sprintf("%s%v", cacheBookLibraryNamePrefix, data.Name)
+	_, err = m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
+		query := fmt.Sprintf("delete from %s where `id` = ?", m.table)
+		return conn.ExecCtx(ctx, query, id)
+	}, bookLibraryIdKey, bookLibraryNameKey)
 	return err
 }
 
-func (m *defaultLibraryModel) FindOne(ctx context.Context, id string) (*Library, error) {
-	query := fmt.Sprintf("select %s from %s where `id` = ? limit 1", libraryRows, m.table)
+func (m *defaultLibraryModel) FindOne(ctx context.Context, id int64) (*Library, error) {
+	bookLibraryIdKey := fmt.Sprintf("%s%v", cacheBookLibraryIdPrefix, id)
 	var resp Library
-	err := m.conn.QueryRowCtx(ctx, &resp, query, id)
+	err := m.QueryRowCtx(ctx, &resp, bookLibraryIdKey, func(ctx context.Context, conn sqlx.SqlConn, v any) error {
+		query := fmt.Sprintf("select %s from %s where `id` = ? limit 1", libraryRows, m.table)
+		return conn.QueryRowCtx(ctx, v, query, id)
+	})
 	switch err {
 	case nil:
 		return &resp, nil
-	case sqlx.ErrNotFound:
+	case sqlc.ErrNotFound:
 		return nil, ErrNotFound
 	default:
 		return nil, err
@@ -75,13 +92,19 @@ func (m *defaultLibraryModel) FindOne(ctx context.Context, id string) (*Library,
 }
 
 func (m *defaultLibraryModel) FindOneByName(ctx context.Context, name string) (*Library, error) {
+	bookLibraryNameKey := fmt.Sprintf("%s%v", cacheBookLibraryNamePrefix, name)
 	var resp Library
-	query := fmt.Sprintf("select %s from %s where `name` = ? limit 1", libraryRows, m.table)
-	err := m.conn.QueryRowCtx(ctx, &resp, query, name)
+	err := m.QueryRowIndexCtx(ctx, &resp, bookLibraryNameKey, m.formatPrimary, func(ctx context.Context, conn sqlx.SqlConn, v any) (i any, e error) {
+		query := fmt.Sprintf("select %s from %s where `name` = ? limit 1", libraryRows, m.table)
+		if err := conn.QueryRowCtx(ctx, &resp, query, name); err != nil {
+			return nil, err
+		}
+		return resp.Id, nil
+	}, m.queryPrimary)
 	switch err {
 	case nil:
 		return &resp, nil
-	case sqlx.ErrNotFound:
+	case sqlc.ErrNotFound:
 		return nil, ErrNotFound
 	default:
 		return nil, err
@@ -89,15 +112,37 @@ func (m *defaultLibraryModel) FindOneByName(ctx context.Context, name string) (*
 }
 
 func (m *defaultLibraryModel) Insert(ctx context.Context, data *Library) (sql.Result, error) {
-	query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?, ?)", m.table, libraryRowsExpectAutoSet)
-	ret, err := m.conn.ExecCtx(ctx, query, data.Id, data.Name, data.Author, data.PublishDate)
+	bookLibraryIdKey := fmt.Sprintf("%s%v", cacheBookLibraryIdPrefix, data.Id)
+	bookLibraryNameKey := fmt.Sprintf("%s%v", cacheBookLibraryNamePrefix, data.Name)
+	ret, err := m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
+		query := fmt.Sprintf("insert into %s (%s) values (?, ?, ?)", m.table, libraryRowsExpectAutoSet)
+		return conn.ExecCtx(ctx, query, data.Name, data.Author, data.PublishDate)
+	}, bookLibraryIdKey, bookLibraryNameKey)
 	return ret, err
 }
 
 func (m *defaultLibraryModel) Update(ctx context.Context, newData *Library) error {
-	query := fmt.Sprintf("update %s set %s where `id` = ?", m.table, libraryRowsWithPlaceHolder)
-	_, err := m.conn.ExecCtx(ctx, query, newData.Name, newData.Author, newData.PublishDate, newData.Id)
+	data, err := m.FindOne(ctx, newData.Id)
+	if err != nil {
+		return err
+	}
+
+	bookLibraryIdKey := fmt.Sprintf("%s%v", cacheBookLibraryIdPrefix, data.Id)
+	bookLibraryNameKey := fmt.Sprintf("%s%v", cacheBookLibraryNamePrefix, data.Name)
+	_, err = m.ExecCtx(ctx, func(ctx context.Context, conn sqlx.SqlConn) (result sql.Result, err error) {
+		query := fmt.Sprintf("update %s set %s where `id` = ?", m.table, libraryRowsWithPlaceHolder)
+		return conn.ExecCtx(ctx, query, newData.Name, newData.Author, newData.PublishDate, newData.Id)
+	}, bookLibraryIdKey, bookLibraryNameKey)
 	return err
+}
+
+func (m *defaultLibraryModel) formatPrimary(primary any) string {
+	return fmt.Sprintf("%s%v", cacheBookLibraryIdPrefix, primary)
+}
+
+func (m *defaultLibraryModel) queryPrimary(ctx context.Context, conn sqlx.SqlConn, v, primary any) error {
+	query := fmt.Sprintf("select %s from %s where `id` = ? limit 1", libraryRows, m.table)
+	return conn.QueryRowCtx(ctx, v, query, primary)
 }
 
 func (m *defaultLibraryModel) tableName() string {

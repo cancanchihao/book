@@ -3,7 +3,6 @@ package svc
 import (
 	"book/library/model"
 	"book/library/rpc/internal/config"
-
 	"github.com/zeromicro/go-zero/core/stores/sqlx"
 )
 
@@ -16,6 +15,6 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	conn := sqlx.NewMysql(c.Mysql.DataSource)
 	return &ServiceContext{
 		c:            c,
-		LibraryModel: model.NewLibraryModel(conn),
+		LibraryModel: model.NewLibraryModel(conn, c.Cache),
 	}
 }
